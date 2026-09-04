@@ -1,4 +1,4 @@
-# 🚀 AI-Powered Multi-Asset Trading Signal Dashboard (v2.0-PRO)
+AI-Powered Multi-Asset Trading Signal Dashboard (v2.0-PRO)
 
 > **Multi-Asset • Indian Blue-Chips & US Tech Equities • Indices • Real Market Data • Live News Sentiment (FinBERT) • Leakage-Free Walk-Forward ML • SHAP Explainability • Transaction-Cost Backtesting**
 
@@ -169,32 +169,6 @@ python -m unittest backend/tests/test_api.py
 
 ---
 
-## 📤 How to Upload this Project to GitHub (Step-by-Step)
-
-If you haven't uploaded it to your GitHub yet, run these commands inside the `trading-signal-dashboard` folder:
-
-```bash
-# 1. Initialize Git repository
-git init
-
-# 2. Add all project files
-git add .
-
-# 3. Commit your project
-git commit -m "feat: complete AI-powered multi-asset trading signal dashboard v2.0"
-
-# 4. Set default branch to main
-git branch -M main
-
-# 5. Link to your GitHub repository (replace YOUR_USERNAME and REPO_NAME)
-git remote add origin https://github.com/YOUR_USERNAME/REPO_NAME.git
-
-# 6. Push code to GitHub
-git push -u origin main
-```
-
----
-
 ## 🏛️ System Features & Highlights
 
 1. **29 Total Instruments**: Covers Indian Blue-Chips, US Tech Giants, Indices, Precious Metals, Energy, Forex, and Crypto.
@@ -207,6 +181,4 @@ git push -u origin main
 
 ---
 
-## 📄 License
-MIT License. Built for institutional quantitative analysis, academic research, and algorithmic trading education.
 
