@@ -1,0 +1,1621 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AURA QUANT | AI-Powered Multi-Asset Trading Signal Dashboard</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#ecfdf5',
+              500: '#10b981',
+              600: '#059669',
+              900: '#064e3b',
+            },
+            dark: {
+              950: '#090d16',
+              900: '#0f172a',
+              850: '#131d33',
+              800: '#1e293b',
+              700: '#334155',
+            },
+            bullish: '#10b981',
+            bearish: '#f43f5e',
+            neutral: '#94a3b8'
+          },
+          fontFamily: {
+            mono: ['JetBrains Mono', 'Fira Code', 'Courier New', 'monospace'],
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #080c14;
+      color: #e2e8f0;
+    }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    .glass-card {
+      background: rgba(15, 23, 42, 0.75);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(51, 65, 85, 0.45);
+    }
+    .glass-card-active {
+      background: rgba(19, 29, 51, 0.9);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+      box-shadow: 0 0 20px -5px rgba(16, 185, 129, 0.15);
+    }
+    .glow-green {
+      box-shadow: 0 0 15px rgba(16, 185, 129, 0.35);
+    }
+    .glow-red {
+      box-shadow: 0 0 15px rgba(244, 63, 94, 0.35);
+    }
+    .tick-flash-up {
+      animation: flashUp 0.6s ease-out;
+    }
+    .tick-flash-down {
+      animation: flashDown 0.6s ease-out;
+    }
+    @keyframes flashUp {
+      0% { background-color: rgba(16, 185, 129, 0.25); color: #34d399; }
+      100% { background-color: transparent; }
+    }
+    @keyframes flashDown {
+      0% { background-color: rgba(244, 63, 94, 0.25); color: #fb7185; }
+      100% { background-color: transparent; }
+    }
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0b1120; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-emerald-500 selection:text-white antialiased">
+
+  <!-- TOP APP HEADER / MARQUEE -->
+  <header class="border-b border-slate-800/80 bg-dark-950/90 sticky top-0 z-50 backdrop-blur-md">
+    <div class="max-w-[1720px] mx-auto px-4 py-2.5 flex items-center justify-between">
+      
+      <!-- Brand & Status -->
+      <div class="flex items-center space-x-4">
+        <div class="flex items-center space-x-2.5">
+          <div class="w-8 h-8 rounded-lg bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+            <i data-lucide="activity" class="w-5 h-5 text-white"></i>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="font-black tracking-wider text-base bg-gradient-to-r from-emerald-400 via-teal-300 to-cyan-400 bg-clip-text text-transparent">AURA QUANT</span>
+              <span class="px-1.5 py-0.5 rounded text-[10px] font-mono font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">v2.0-PRO</span>
+            </div>
+            <p class="text-[11px] text-slate-400 font-medium">Multi-Asset AI Signal & Sentiment Engine</p>
+          </div>
+        </div>
+
+        <div class="hidden md:flex items-center space-x-2 pl-4 border-l border-slate-800">
+          <div id="ws-indicator" class="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-slate-900 border border-slate-700 text-xs font-mono">
+            <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+            <span id="ws-status-text" class="text-slate-300 text-[11px]">STREAM ACTIVE</span>
+          </div>
+          <div class="flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-slate-900 border border-slate-700 text-xs font-mono">
+            <i data-lucide="cpu" class="w-3.5 h-3.5 text-cyan-400"></i>
+            <span class="text-slate-300 text-[11px]">GBDT + SHAP + FinBERT</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Quick Stats & World Clocks -->
+      <div class="hidden xl:flex items-center space-x-3 text-xs font-mono">
+        <div class="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800">
+          <span class="text-slate-500 text-[10px]">🇮🇳 MUMBAI:</span>
+          <span id="clock-ist" class="font-bold text-emerald-400">--:--:-- IST</span>
+        </div>
+        <div class="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800">
+          <span class="text-slate-500 text-[10px]">🇺🇸 NEW YORK:</span>
+          <span id="clock-edt" class="font-bold text-teal-300">--:--:-- EDT</span>
+        </div>
+        <div class="flex items-center space-x-1.5 px-2.5 py-1 rounded-lg bg-slate-900 border border-slate-800">
+          <span class="text-slate-500 text-[10px]">🌐 UTC:</span>
+          <span id="clock-utc" class="font-bold text-cyan-400">--:--:-- UTC</span>
+        </div>
+      </div>
+
+      <!-- Action Toggles -->
+      <div class="flex items-center space-x-3">
+        <button id="refresh-btn" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-medium border border-slate-700 transition">
+          <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+          <span>Sync Live</span>
+        </button>
+        <button id="sound-btn" class="p-2 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-slate-200 border border-slate-700 transition" title="Toggle Sound">
+          <i data-lucide="volume-2" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- MAIN APP CONTAINER -->
+  <main class="max-w-[1720px] mx-auto w-full px-4 py-4 flex-1 flex flex-col gap-4">
+
+    <!-- TOP NAVIGATION TABS -->
+    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-slate-800 pb-3">
+      <div class="flex items-center space-x-2 bg-slate-900/80 p-1 rounded-xl border border-slate-800">
+        <button class="nav-tab active px-4 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition flex items-center space-x-2" data-tab="dashboard">
+          <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+          <span>Signal Terminal</span>
+        </button>
+        <button class="nav-tab px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition flex items-center space-x-2" data-tab="backtesting">
+          <i data-lucide="line-chart" class="w-4 h-4"></i>
+          <span>Backtest Suite</span>
+        </button>
+        <button class="nav-tab px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition flex items-center space-x-2" data-tab="accuracy">
+          <i data-lucide="shield-check" class="w-4 h-4"></i>
+          <span>Live Accuracy & T+5 Log</span>
+        </button>
+        <button class="nav-tab px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition flex items-center space-x-2" data-tab="portfolio">
+          <i data-lucide="pie-chart" class="w-4 h-4"></i>
+          <span>Cross-Asset Heatmap</span>
+        </button>
+      </div>
+
+      <!-- Market Exchange Status Banner (Global) -->
+      <div id="exchange-badge" class="flex items-center space-x-2 text-xs font-mono px-3 py-1.5 rounded-lg bg-dark-900 border border-slate-800 text-slate-300">
+        <span id="market-status-dot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span id="market-status-text">NSE Session Active (09:15 - 15:30 IST)</span>
+      </div>
+    </div>
+
+    <!-- TAB 1: SIGNAL DASHBOARD TERMINAL -->
+    <div id="view-dashboard" class="tab-view flex-1 flex flex-col gap-4">
+      
+      <!-- ASSET FILTER & SEARCH BAR -->
+      <div class="flex flex-wrap items-center justify-between gap-2.5">
+        <!-- Category Filter Pills -->
+        <div class="flex flex-wrap items-center gap-1.5" id="category-pills-container">
+          <button class="cat-pill active px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition" data-category="ALL">All (29)</button>
+          <button class="cat-pill px-3 py-1 rounded-lg text-xs font-medium bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 transition" data-category="Indian Equities">🏢 Indian Equities</button>
+          <button class="cat-pill px-3 py-1 rounded-lg text-xs font-medium bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 transition" data-category="US Equities">🇺🇸 US Equities</button>
+          <button class="cat-pill px-3 py-1 rounded-lg text-xs font-medium bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 transition" data-category="Indian Indices">📈 Indices</button>
+          <button class="cat-pill px-3 py-1 rounded-lg text-xs font-medium bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 transition" data-category="Crypto">🪙 Crypto</button>
+          <button class="cat-pill px-3 py-1 rounded-lg text-xs font-medium bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 transition" data-category="Precious Metals">🥇 Metals</button>
+          <button class="cat-pill px-3 py-1 rounded-lg text-xs font-medium bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 transition" data-category="Energy Commodities">⚡ Energy</button>
+          <button class="cat-pill px-3 py-1 rounded-lg text-xs font-medium bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 transition" data-category="Forex">💱 Forex</button>
+          <button class="cat-pill px-3 py-1 rounded-lg text-xs font-medium bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 transition" data-category="Sector ETFs">📊 ETFs</button>
+        </div>
+
+        <!-- Search Input -->
+        <div class="relative min-w-[220px]">
+          <i data-lucide="search" class="w-3.5 h-3.5 text-slate-500 absolute left-3 top-2.5"></i>
+          <input
+            type="text"
+            id="asset-search-input"
+            placeholder="Search company or ticker..."
+            class="w-full bg-slate-900/90 border border-slate-800 rounded-lg pl-8 pr-3 py-1 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-emerald-500/50 font-mono"
+          />
+        </div>
+      </div>
+
+      <!-- TOP ASSET SELECTOR CAROUSEL -->
+      <div class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 xl:grid-cols-8 gap-2.5 max-h-[190px] overflow-y-auto pr-1" id="asset-selector-grid">
+        <!-- Asset cards rendered dynamically -->
+      </div>
+
+      <!-- MAIN WORKSPACE GRID -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1">
+        
+        <!-- LEFT 8 COLS: LIVE PRICE CHART & INDICATORS -->
+        <div class="lg:col-span-8 flex flex-col gap-3">
+          
+          <!-- Chart Container Card -->
+          <div class="glass-card rounded-2xl p-4 flex flex-col h-[535px]">
+            
+            <!-- Dynamic Market Session & Exchange Live Clock Bar -->
+            <div class="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-xl bg-slate-900/90 border border-slate-800 text-xs font-mono mb-2.5">
+              <div class="flex flex-wrap items-center gap-2.5">
+                <div class="flex items-center space-x-1.5 text-slate-200">
+                  <i data-lucide="landmark" class="w-3.5 h-3.5 text-emerald-400"></i>
+                  <span id="chart-exchange-name" class="font-bold text-white">NSE / BSE (India)</span>
+                </div>
+                <span class="text-slate-700 hidden sm:inline">•</span>
+                <div class="flex items-center space-x-1 text-slate-400 text-[11px]">
+                  <i data-lucide="calendar" class="w-3 h-3 text-cyan-400"></i>
+                  <span id="chart-session-hours">09:15 - 15:30 IST (Mon-Fri)</span>
+                </div>
+              </div>
+
+              <div class="flex items-center space-x-2.5">
+                <div class="flex items-center space-x-1.5 text-slate-300 bg-slate-950 px-2.5 py-0.5 rounded-lg border border-slate-800">
+                  <i data-lucide="clock" class="w-3 h-3 text-cyan-400"></i>
+                  <span class="text-[10px] text-slate-500 uppercase hidden md:inline">Exchange Time:</span>
+                  <span id="chart-exchange-clock" class="font-bold text-cyan-300 text-xs">--:--:-- IST</span>
+                </div>
+                <div id="chart-market-status-pill" class="flex items-center space-x-1.5 px-2.5 py-0.5 rounded-lg border text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border-emerald-500/30">
+                  <span id="chart-status-pulse" class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+                  <span id="chart-market-status-text">MARKET OPEN</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Chart Header Controls -->
+            <div class="flex flex-wrap items-center justify-between gap-2 mb-2">
+              <div class="flex items-center space-x-3">
+                <div>
+                  <div class="flex flex-wrap items-center gap-2">
+                    <h2 id="chart-asset-name" class="text-lg font-bold text-white flex items-center space-x-2">
+                      <span>Nifty 50</span>
+                      <span id="chart-asset-ticker" class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400">^NSEI</span>
+                    </h2>
+                    <span id="chart-instrument-badge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                      📈 Benchmark Index (Traded via Futures / ETFs)
+                    </span>
+                  </div>
+                  <div class="flex items-baseline space-x-2.5 mt-0.5">
+                    <span id="chart-price" class="text-2xl font-black font-mono tracking-tight text-white">24,820.50</span>
+                    <span id="chart-change" class="text-xs font-mono font-semibold px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">+160.20 (+0.65%)</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Indicators & Timeframe Controls -->
+              <div class="flex items-center space-x-2">
+                <div class="flex items-center bg-slate-900 p-1 rounded-lg border border-slate-800 text-xs">
+                  <button class="chart-tf active px-2.5 py-1 rounded bg-emerald-500/20 text-emerald-400 font-semibold" data-tf="90">90D</button>
+                  <button class="chart-tf px-2.5 py-1 rounded text-slate-400 hover:text-slate-200" data-tf="30">30D</button>
+                  <button class="chart-tf px-2.5 py-1 rounded text-slate-400 hover:text-slate-200" data-tf="180">6M</button>
+                </div>
+                <div class="flex items-center space-x-1.5 bg-slate-900 p-1 rounded-lg border border-slate-800 text-xs">
+                  <button id="toggle-bollinger" class="px-2 py-1 rounded bg-slate-800 text-slate-300 font-mono text-[11px] border border-slate-700" title="Toggle Bollinger Bands">BB</button>
+                  <button id="toggle-rsi" class="px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 font-mono text-[11px] border border-emerald-500/30" title="Toggle RSI">RSI</button>
+                  <button id="toggle-macd" class="px-2 py-1 rounded bg-emerald-500/20 text-emerald-400 font-mono text-[11px] border border-emerald-500/30" title="Toggle MACD">MACD</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Price Canvas -->
+            <div class="relative flex-1 w-full min-h-0">
+              <canvas id="priceChartCanvas" class="w-full h-full"></canvas>
+            </div>
+
+            <!-- Secondary Subchart for RSI / MACD -->
+            <div class="h-28 border-t border-slate-800 pt-2 mt-2">
+              <div class="flex items-center justify-between text-[11px] font-mono text-slate-400 mb-1">
+                <span class="flex items-center space-x-1.5">
+                  <span class="w-2 h-2 rounded-full bg-cyan-400"></span>
+                  <span id="subchart-label">RSI (14-period Wilder Smoothed)</span>
+                </span>
+                <span id="subchart-val" class="font-bold text-cyan-400">62.4</span>
+              </div>
+              <div class="relative h-20 w-full">
+                <canvas id="subChartCanvas" class="w-full h-full"></canvas>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- BOTTOM ROW: NEWS THAT MOVED THE SIGNAL -->
+          <div class="glass-card rounded-2xl p-4">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center space-x-2">
+                <div class="w-6 h-6 rounded-md bg-cyan-500/20 text-cyan-400 flex items-center justify-center">
+                  <i data-lucide="newspaper" class="w-3.5 h-3.5"></i>
+                </div>
+                <h3 class="text-sm font-bold text-white uppercase tracking-wider">News Catalysts Driving the Signal</h3>
+              </div>
+              <span class="text-xs font-mono text-slate-500">FinBERT NLP Polarity + Time Decay Weighted</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3" id="news-catalysts-container">
+              <!-- Rendered dynamically -->
+            </div>
+          </div>
+
+        </div>
+
+        <!-- RIGHT 4 COLS: AI SIGNAL CARD & SHAP EXPLAINABILITY -->
+        <div class="lg:col-span-4 flex flex-col gap-4">
+          
+          <!-- AI SIGNAL CARD -->
+          <div class="glass-card rounded-2xl p-5 relative overflow-hidden">
+            <div class="flex items-center justify-between mb-4">
+              <div class="flex items-center space-x-2">
+                <div class="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-ping"></div>
+                <span class="text-xs font-bold font-mono tracking-wider text-slate-400 uppercase">AI Forecast Horizon</span>
+              </div>
+              <span class="px-2 py-0.5 rounded text-xs font-mono font-semibold bg-slate-800 text-cyan-400 border border-slate-700">5 TRADING DAYS</span>
+            </div>
+
+            <!-- Recommendation Callout -->
+            <div class="text-center py-4 px-3 bg-slate-900/90 rounded-xl border border-slate-800 mb-4" id="signal-callout-box">
+              <span class="text-[11px] font-mono text-slate-400 uppercase tracking-widest block mb-1">Directional Signal</span>
+              <div id="signal-label" class="text-3xl font-black tracking-tight text-emerald-400 uppercase">STRONG BUY</div>
+              <div id="signal-vehicle-badge" class="mt-1.5 inline-block text-[11px] font-mono px-2.5 py-0.5 rounded-full bg-slate-800 text-slate-300 border border-slate-700">
+                Action: Long Index Futures / ETF (NIFTYBEES)
+              </div>
+              <span id="signal-probability" class="text-xs font-mono text-slate-400 mt-1.5 block">83.5% Model Confidence Probability</span>
+              <p id="signal-instrument-disclaimer" class="text-[10px] text-slate-500 font-mono mt-2 pt-2 border-t border-slate-800/80">
+                💡 Note: Indices are benchmarks and cannot be purchased directly. Exposure executed via Index ETFs (e.g. NIFTYBEES) or Futures.
+              </p>
+            </div>
+
+            <!-- Confidence Progress Bar -->
+            <div class="space-y-1.5 mb-5">
+              <div class="flex justify-between text-xs font-mono">
+                <span class="text-slate-400">Confidence Conviction</span>
+                <span id="confidence-pct" class="font-bold text-emerald-400">83.5%</span>
+              </div>
+              <div class="w-full h-2.5 bg-slate-800 rounded-full overflow-hidden p-0.5">
+                <div id="confidence-bar" class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400 transition-all duration-500" style="width: 83.5%"></div>
+              </div>
+            </div>
+
+            <!-- Quick Indicator Gauges Grid -->
+            <div class="grid grid-cols-3 gap-2 text-center text-xs font-mono mb-2">
+              <div class="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80">
+                <span class="text-slate-500 text-[10px] block">RSI (14)</span>
+                <span id="quick-rsi" class="font-bold text-emerald-400 text-sm">28.4</span>
+                <span class="text-[9px] text-slate-400">Oversold</span>
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80">
+                <span class="text-slate-500 text-[10px] block">SENTIMENT</span>
+                <span id="quick-sentiment" class="font-bold text-cyan-400 text-sm">+0.74</span>
+                <span class="text-[9px] text-emerald-400">Bullish</span>
+              </div>
+              <div class="p-2.5 rounded-xl bg-slate-900/60 border border-slate-800/80">
+                <span class="text-slate-500 text-[10px] block">VOLATILITY</span>
+                <span id="quick-vol" class="font-bold text-amber-400 text-sm">14.2%</span>
+                <span class="text-[9px] text-slate-400">Normal</span>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- SHAP EXPLAINABILITY PANEL -->
+          <div class="glass-card rounded-2xl p-5 flex-1 flex flex-col">
+            <div class="flex items-center justify-between mb-3">
+              <div class="flex items-center space-x-2">
+                <div class="w-6 h-6 rounded-md bg-purple-500/20 text-purple-400 flex items-center justify-center">
+                  <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+                </div>
+                <h3 class="text-sm font-bold text-white uppercase tracking-wider">SHAP Explainability Breakdown</h3>
+              </div>
+              <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-purple-500/10 text-purple-300 border border-purple-500/20">Plain English</span>
+            </div>
+
+            <p class="text-xs text-slate-400 mb-3">
+              TreeExplainer marginal feature contributions driving the AI model log-odds:
+            </p>
+
+            <!-- SHAP Drivers List -->
+            <div class="space-y-2.5 flex-1 overflow-y-auto pr-1" id="shap-drivers-list">
+              <!-- Rendered dynamically -->
+            </div>
+
+          </div>
+
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- TAB 2: BACKTEST SUITE VIEW -->
+    <div id="view-backtesting" class="tab-view hidden flex-1 flex flex-col gap-4">
+      
+      <!-- Backtest Asset Header & Switcher -->
+      <div class="glass-card rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="flex items-center space-x-3">
+          <div class="w-10 h-10 rounded-xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30">
+            <i data-lucide="line-chart" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <div class="flex items-center space-x-2">
+              <h2 id="bt-asset-name" class="text-base font-bold text-white">Nifty 50</h2>
+              <span id="bt-asset-ticker" class="text-xs font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">^NSEI</span>
+              <span id="bt-asset-class" class="text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">Indian Indices</span>
+            </div>
+            <p class="text-xs text-slate-400">Transaction-Cost-Aware Simulation (8–12 Walk-Forward Folds, 100% Out-of-Sample)</p>
+          </div>
+        </div>
+
+        <!-- In-Tab Asset Selector -->
+        <div class="flex items-center space-x-2.5">
+          <span class="text-xs font-mono text-slate-400">Select Asset:</span>
+          <select id="bt-asset-select" class="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg px-3 py-1.5 font-mono focus:outline-none focus:border-emerald-500">
+            <!-- Populated dynamically -->
+          </select>
+          <span class="text-xs font-mono px-2.5 py-1 rounded-lg bg-slate-800 text-emerald-400 border border-slate-700" id="backtest-cost-badge">Cost: 15 bps applied</span>
+        </div>
+      </div>
+
+      <!-- Executive Strategy Verdict Card -->
+      <div class="p-4 rounded-2xl bg-gradient-to-r from-slate-900 via-dark-850 to-slate-900 border border-emerald-500/30">
+        <div class="flex items-center space-x-2 mb-1.5">
+          <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
+          <span class="text-xs font-mono font-bold tracking-wider text-emerald-400 uppercase">Executive Strategy Verdict & Alpha Assessment</span>
+        </div>
+        <p id="bt-verdict-text" class="text-xs font-medium text-slate-300 leading-relaxed">
+          Loading strategy assessment...
+        </p>
+      </div>
+
+      <!-- Backtest Scorecard Cards (8 metrics) -->
+      <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-2.5" id="backtest-stats-grid">
+        <!-- Stats populated dynamically -->
+      </div>
+
+      <!-- Backtest Chart & Trade Log -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1">
+        <div class="lg:col-span-8 glass-card rounded-2xl p-5 flex flex-col h-[520px]">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="text-sm font-bold text-white uppercase tracking-wider flex items-center space-x-2">
+                <span>AI Strategy vs. Buy & Hold Benchmark Curve</span>
+              </h3>
+              <p class="text-xs text-slate-400">Simulation assumes $100,000 initial capital with market transaction costs deducted on every turn</p>
+            </div>
+            <div class="flex items-center space-x-4 text-xs font-mono">
+              <span class="flex items-center space-x-1.5"><span class="w-3 h-3 rounded-full bg-emerald-400"></span><span class="text-white font-semibold">AI Strategy</span></span>
+              <span class="flex items-center space-x-1.5"><span class="w-3 h-3 rounded-full bg-slate-500"></span><span class="text-slate-400">Buy & Hold Baseline</span></span>
+            </div>
+          </div>
+
+          <div class="relative flex-1 w-full min-h-0">
+            <canvas id="backtestChartCanvas" class="w-full h-full"></canvas>
+          </div>
+        </div>
+
+        <div class="lg:col-span-4 glass-card rounded-2xl p-5 flex flex-col">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider flex items-center space-x-2">
+              <i data-lucide="history" class="w-4 h-4 text-emerald-400"></i>
+              <span>Recent Simulated Trade Log</span>
+            </h3>
+            <span class="text-xs font-mono text-slate-500">Net of Fees</span>
+          </div>
+
+          <div class="space-y-2 flex-1 overflow-y-auto pr-1" id="backtest-trades-list">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- TAB 3: ACCURACY & T+5 AUDIT LOG -->
+    <div id="view-accuracy" class="tab-view hidden flex-1 flex flex-col gap-4">
+      
+      <!-- Explanation & Asset Filter Header -->
+      <div class="glass-card rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3">
+        <div class="max-w-2xl">
+          <div class="flex items-center space-x-2 mb-1">
+            <i data-lucide="shield-alert" class="w-4 h-4 text-cyan-400"></i>
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">What is T+5 Prediction Verification?</h3>
+          </div>
+          <p class="text-xs text-slate-400 leading-relaxed">
+            Every signal generated by the AI is frozen with its entry timestamp and price. Exactly 5 trading days later (T+5), the actual exchange close price is recorded to evaluate genuine out-of-sample accuracy and detect real-time model drift.
+          </p>
+        </div>
+
+        <div class="flex items-center space-x-2.5">
+          <span class="text-xs font-mono text-slate-400">Filter Asset / Company:</span>
+          <select id="acc-asset-select" class="bg-slate-900 border border-slate-700 text-slate-200 text-xs rounded-lg px-3 py-1.5 font-mono focus:outline-none focus:border-emerald-500">
+            <!-- Populated dynamically -->
+          </select>
+        </div>
+      </div>
+
+      <!-- Accuracy Metrics Grid -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div class="glass-card rounded-2xl p-4">
+          <span class="text-xs font-mono text-slate-400 uppercase">Rolling 7-Day Accuracy</span>
+          <div class="text-3xl font-black font-mono text-emerald-400 mt-1" id="acc-7d">71.4%</div>
+          <p class="text-xs text-slate-500 mt-1">Short-term model conviction</p>
+        </div>
+        <div class="glass-card rounded-2xl p-4">
+          <span class="text-xs font-mono text-slate-400 uppercase">Rolling 30-Day Accuracy</span>
+          <div class="text-3xl font-black font-mono text-teal-300 mt-1" id="acc-30d">68.2%</div>
+          <p class="text-xs text-slate-500 mt-1">Production baseline benchmark</p>
+        </div>
+        <div class="glass-card rounded-2xl p-4">
+          <span class="text-xs font-mono text-slate-400 uppercase">Rolling 90-Day Accuracy</span>
+          <div class="text-3xl font-black font-mono text-cyan-400 mt-1" id="acc-90d">65.5%</div>
+          <p class="text-xs text-slate-500 mt-1">Quarterly consistency rate</p>
+        </div>
+        <div class="glass-card rounded-2xl p-4">
+          <span class="text-xs font-mono text-slate-400 uppercase">Model Drift Status</span>
+          <div class="text-2xl font-black font-mono text-emerald-400 mt-1" id="drift-status">OPTIMAL</div>
+          <p class="text-xs text-slate-500 mt-1">>60% accuracy threshold met</p>
+        </div>
+      </div>
+
+      <!-- Rolling Drift Chart & Outcome Table -->
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        
+        <!-- Accuracy Timeline Drift Chart (4 cols) -->
+        <div class="lg:col-span-4 glass-card rounded-2xl p-5 flex flex-col h-[480px]">
+          <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider flex items-center space-x-2">
+              <i data-lucide="trending-up" class="w-4 h-4 text-cyan-400"></i>
+              <span>Rolling Accuracy Drift</span>
+            </h3>
+            <span class="text-[10px] font-mono text-slate-500">7D vs 30D</span>
+          </div>
+          <p class="text-xs text-slate-400 mb-2">Flat or rising curve signifies model stability; steep downward trajectory indicates market regime drift.</p>
+          <div class="relative flex-1 w-full min-h-0">
+            <canvas id="accuracyChartCanvas" class="w-full h-full"></canvas>
+          </div>
+        </div>
+
+        <!-- T+5 Outcome Audit Table (8 cols) -->
+        <div class="lg:col-span-8 glass-card rounded-2xl p-5 flex flex-col h-[480px]">
+          <div class="flex items-center justify-between mb-3">
+            <div>
+              <h3 class="text-sm font-bold text-white uppercase tracking-wider">T+5 Prediction Outcome Audit Log</h3>
+              <p class="text-xs text-slate-400">Verified record comparing frozen forecast signals against actual 5-day closing prices</p>
+            </div>
+            <span class="text-xs font-mono px-3 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700" id="total-audit-count">128 Verified Forecasts</span>
+          </div>
+
+          <div class="overflow-x-auto flex-1">
+            <table class="w-full text-left text-xs font-mono">
+              <thead>
+                <tr class="border-b border-slate-800 text-slate-500 uppercase text-[10px]">
+                  <th class="pb-2">Company / Asset</th>
+                  <th class="pb-2">Prediction Date</th>
+                  <th class="pb-2">Forecast Signal</th>
+                  <th class="pb-2">Entry Price</th>
+                  <th class="pb-2">T+5 Outcome Date</th>
+                  <th class="pb-2">Resolved Price</th>
+                  <th class="pb-2">5-Day Return</th>
+                  <th class="pb-2 text-right">Result</th>
+                </tr>
+              </thead>
+              <tbody id="accuracy-audit-tbody" class="divide-y divide-slate-800/60">
+                <!-- Populated dynamically -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- TAB 4: PORTFOLIO & CORRELATION HEATMAP -->
+    <div id="view-portfolio" class="tab-view hidden flex-1 flex flex-col gap-4">
+      <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        
+        <div class="lg:col-span-7 glass-card rounded-2xl p-5 flex flex-col">
+          <div class="flex items-center justify-between mb-4">
+            <h3 class="text-base font-bold text-white">Cross-Asset Correlation Matrix</h3>
+            <span class="text-xs font-mono text-cyan-400">Rolling 20-Day Intermarket Dynamics</span>
+          </div>
+          <p class="text-xs text-slate-400 mb-4">Real-time correlation pairs measuring global liquidity spillover, safe-haven decoupling, and currency sensitivity.</p>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3" id="correlation-pairs-grid">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+        <div class="lg:col-span-5 glass-card rounded-2xl p-5 flex flex-col">
+          <h3 class="text-base font-bold text-white mb-2">High-Conviction Top Picks</h3>
+          <p class="text-xs text-slate-400 mb-4">Ranked by cross-asset model probability conviction</p>
+          
+          <div class="space-y-3 flex-1" id="top-picks-list">
+            <!-- Populated dynamically -->
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+  </main>
+
+  <!-- JAVASCRIPT APPLICATION LOGIC -->
+  <script>
+    // State
+    let currentTicker = "^NSEI";
+    let activeTab = "dashboard";
+    let selectedCategory = "ALL";
+    let searchKeyword = "";
+    let ws = null;
+    let priceChart = null;
+    let subChart = null;
+    let backtestChart = null;
+    let assetList = [];
+    let soundEnabled = true;
+
+    // Dynamic Market Timing State
+    let currentAssetTimezone = "Asia/Kolkata";
+    let currentTimezoneCode = "IST";
+    let currentExchange = "NSE / BSE (National Stock Exchange of India)";
+    let currentSession = "09:15 - 15:30 IST (Mon-Fri)";
+    let currentMarketOpen = false;
+    let currentStatusMsg = "NSE Session Active";
+
+    // Audio beep synth for live ticks
+    const audioCtx = (window.AudioContext || window.webkitAudioContext) ? new (window.AudioContext || window.webkitAudioContext)() : null;
+    function playTickSound(isUp) {
+      if (!soundEnabled || !audioCtx) return;
+      try {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.type = "sine";
+        osc.frequency.value = isUp ? 880 : 440;
+        gain.gain.setValueAtTime(0.02, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + 0.08);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.08);
+      } catch (e) {}
+    }
+
+    // Initialize Lucide Icons
+    function renderIcons() {
+      if (window.lucide) {
+        lucide.createIcons();
+      }
+    }
+
+    // Live Market Clock Engine (Ticks every 1s)
+    function updateLiveClocks() {
+      const now = new Date();
+
+      // 1. Top World Clocks
+      const timeIST = now.toLocaleTimeString('en-US', { timeZone: 'Asia/Kolkata', hour12: false });
+      const timeEDT = now.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour12: false });
+      const timeUTC = now.toLocaleTimeString('en-US', { timeZone: 'UTC', hour12: false });
+
+      const elIST = document.getElementById("clock-ist");
+      if (elIST) elIST.textContent = `${timeIST} IST`;
+      const elEDT = document.getElementById("clock-edt");
+      if (elEDT) elEDT.textContent = `${timeEDT} EDT`;
+      const elUTC = document.getElementById("clock-utc");
+      if (elUTC) elUTC.textContent = `${timeUTC} UTC`;
+
+      // 2. Local Exchange Clock for Current Selected Asset
+      try {
+        const localExchangeTime = now.toLocaleTimeString('en-US', { timeZone: currentAssetTimezone, hour12: false });
+        const localExchangeDate = now.toLocaleDateString('en-US', { timeZone: currentAssetTimezone, month: 'short', day: 'numeric' });
+        
+        const chartClockEl = document.getElementById("chart-exchange-clock");
+        if (chartClockEl) {
+          chartClockEl.textContent = `${localExchangeDate}, ${localExchangeTime} ${currentTimezoneCode}`;
+        }
+      } catch (e) {
+        const chartClockEl = document.getElementById("chart-exchange-clock");
+        if (chartClockEl) chartClockEl.textContent = `${timeIST} IST`;
+      }
+
+      // 3. Update Chart Market Session Status Elements
+      const exchNameEl = document.getElementById("chart-exchange-name");
+      if (exchNameEl) exchNameEl.textContent = currentExchange;
+
+      const sessionHoursEl = document.getElementById("chart-session-hours");
+      if (sessionHoursEl) sessionHoursEl.textContent = currentSession;
+
+      const statusPill = document.getElementById("chart-market-status-pill");
+      const statusText = document.getElementById("chart-market-status-text");
+      const statusPulse = document.getElementById("chart-status-pulse");
+
+      if (statusPill && statusText) {
+        if (currentMarketOpen) {
+          statusPill.className = "flex items-center space-x-1.5 px-2.5 py-0.5 rounded-lg border text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border-emerald-500/30";
+          statusText.textContent = "MARKET OPEN";
+          if (statusPulse) statusPulse.className = "w-2 h-2 rounded-full bg-emerald-400 animate-pulse";
+        } else {
+          statusPill.className = "flex items-center space-x-1.5 px-2.5 py-0.5 rounded-lg border text-[10px] font-bold bg-rose-500/10 text-rose-400 border-rose-500/30";
+          statusText.textContent = "MARKET CLOSED";
+          if (statusPulse) statusPulse.className = "w-2 h-2 rounded-full bg-rose-400";
+        }
+      }
+
+      const globalStatusText = document.getElementById("market-status-text");
+      const globalStatusDot = document.getElementById("market-status-dot");
+      if (globalStatusText) {
+        globalStatusText.textContent = currentStatusMsg;
+      }
+      if (globalStatusDot) {
+        globalStatusDot.className = `w-2 h-2 rounded-full ${currentMarketOpen ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`;
+      }
+    }
+
+    // API Helpers
+    const API_BASE = window.location.origin.includes("localhost") || window.location.origin.includes("127.0.0.1")
+      ? window.location.origin + "/api"
+      : "/api";
+
+    async function fetchJSON(endpoint) {
+      try {
+        const res = await fetch(`${API_BASE}${endpoint}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return await res.json();
+      } catch (e) {
+        console.warn(`Fetch error for ${endpoint}:`, e);
+        return null;
+      }
+    }
+
+    // 1. Load Assets Grid with Category & Search Filtering
+    async function loadAssets() {
+      if (assetList.length === 0) {
+        const data = await fetchJSON("/assets");
+        if (data && data.assets) {
+          assetList = data.assets;
+          populateAssetDropdowns();
+        }
+      }
+      if (!assetList || assetList.length === 0) return;
+
+      const container = document.getElementById("asset-selector-grid");
+      container.innerHTML = "";
+
+      // Filter assets
+      const filtered = assetList.filter(asset => {
+        const matchesCat = selectedCategory === "ALL" || asset.asset_class === selectedCategory;
+        const matchesSearch = !searchKeyword || 
+          asset.name.toLowerCase().includes(searchKeyword.toLowerCase()) || 
+          asset.ticker.toLowerCase().includes(searchKeyword.toLowerCase());
+        return matchesCat && matchesSearch;
+      });
+
+      if (filtered.length === 0) {
+        container.innerHTML = `<div class="col-span-full py-4 text-center text-xs font-mono text-slate-500">No assets found matching "${searchKeyword}" in category "${selectedCategory}".</div>`;
+        return;
+      }
+
+      filtered.forEach(asset => {
+        const isSelected = asset.ticker === currentTicker;
+        const isBuy = asset.signal_code === "BUY";
+        const isSell = asset.signal_code === "SELL";
+        
+        const badgeColor = isBuy ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" :
+                           isSell ? "bg-rose-500/10 text-rose-400 border-rose-500/30" :
+                           "bg-slate-800 text-slate-400 border-slate-700";
+
+        const card = document.createElement("div");
+        card.className = `p-3 rounded-xl cursor-pointer transition flex flex-col justify-between ${
+          isSelected ? "glass-card-active" : "glass-card hover:border-slate-600"
+        }`;
+        card.onclick = () => selectAsset(asset.ticker);
+
+        const cleanTicker = asset.ticker.replace('^', '').replace('.NS', '');
+        const isINR = asset.ticker.includes('^NSE') || asset.ticker.includes('^BSE') || asset.ticker.includes('.NS') || asset.ticker.includes('USDINR');
+        const pricePrefix = isINR ? '₹' : '$';
+
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <span class="text-[10px] font-mono font-bold text-slate-400 flex items-center space-x-1">
+                <span>${cleanTicker}</span>
+              </span>
+              <span class="px-1.5 py-0.2 text-[9px] font-mono font-bold rounded border ${badgeColor}">${asset.signal}</span>
+            </div>
+            <div class="text-xs font-bold text-white truncate" title="${asset.name}">${asset.name}</div>
+          </div>
+          <div class="mt-2 flex items-baseline justify-between">
+            <span class="text-xs font-mono font-bold text-slate-200">${pricePrefix}${asset.current_price.toLocaleString()}</span>
+            <span class="text-[10px] font-mono ${asset.change_24h_pct >= 0 ? 'text-emerald-400' : 'text-rose-400'}">
+              ${asset.change_24h_pct >= 0 ? '+' : ''}${asset.change_24h_pct}%
+            </span>
+          </div>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    // 2. Select Asset Handler
+    async function selectAsset(ticker) {
+      currentTicker = ticker;
+      
+      // Look up quick cached asset metadata
+      const cached = assetList.find(a => a.ticker === ticker);
+      if (cached) {
+        if (cached.timezone_id) currentAssetTimezone = cached.timezone_id;
+        if (cached.timezone_code) currentTimezoneCode = cached.timezone_code;
+        if (cached.exchange) currentExchange = cached.exchange;
+        if (cached.exchange_session) currentSession = cached.exchange_session;
+        if (cached.is_market_open !== undefined) currentMarketOpen = cached.is_market_open;
+        if (cached.status_message) currentStatusMsg = cached.status_message;
+        updateLiveClocks();
+      }
+
+      loadAssets();
+      await Promise.all([
+        loadPriceHistory(ticker),
+        loadPrediction(ticker),
+        loadBacktest(ticker),
+        loadAccuracy(ticker)
+      ]);
+      connectWebSocket(ticker);
+    }
+
+    // 3. Load Price Chart
+    async function loadPriceHistory(ticker) {
+      const data = await fetchJSON(`/price/${encodeURIComponent(ticker)}?interval=1d&days=90`);
+      if (!data || !data.bars) return;
+
+      // Update Exchange & Timezone Metadata
+      if (data.timezone_id) currentAssetTimezone = data.timezone_id;
+      if (data.timezone_code) currentTimezoneCode = data.timezone_code;
+      if (data.exchange) currentExchange = data.exchange;
+      if (data.status_message) currentStatusMsg = data.status_message;
+      if (data.is_market_open !== undefined) currentMarketOpen = data.is_market_open;
+      updateLiveClocks();
+
+      const labels = data.bars.map(b => b.timestamp.split(' ')[0]);
+      const closes = data.bars.map(b => b.close);
+      const rsiVals = data.bars.map(b => b.rsi);
+      const bbUpper = data.bars.map(b => b.bb_upper);
+      const bbLower = data.bars.map(b => b.bb_lower);
+      const ema20 = data.bars.map(b => b.ema_20);
+
+      const latest = data.bars[data.bars.length - 1];
+      const isINR = ticker.includes('^NSE') || ticker.includes('^BSE') || ticker.includes('.NS') || ticker.includes('USDINR');
+      const pricePrefix = isINR ? '₹' : '$';
+
+      document.getElementById("chart-asset-name").querySelector("span").textContent = data.name;
+      document.getElementById("chart-asset-ticker").textContent = data.ticker;
+      document.getElementById("chart-price").textContent = `${pricePrefix}${latest.close.toLocaleString()}`;
+      
+      const prev = data.bars[data.bars.length - 2] || latest;
+      const chg = (latest.close - prev.close).toFixed(2);
+      const chgPct = (((latest.close - prev.close) / prev.close) * 100).toFixed(2);
+      const chgEl = document.getElementById("chart-change");
+      chgEl.textContent = `${chg >= 0 ? '+' : ''}${chg} (${chgPct >= 0 ? '+' : ''}${chgPct}%)`;
+      chgEl.className = `text-xs font-mono font-semibold px-2 py-0.5 rounded ${
+        chg >= 0 ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+      }`;
+
+      // Destroy previous chart
+      if (priceChart) priceChart.destroy();
+
+      const ctx = document.getElementById("priceChartCanvas").getContext("2d");
+      const gradient = ctx.createLinearGradient(0, 0, 0, 300);
+      gradient.addColorStop(0, "rgba(16, 185, 129, 0.25)");
+      gradient.addColorStop(1, "rgba(16, 185, 129, 0.0)");
+      gradient.addColorStop(0, "rgba(16, 185, 129, 0.25)");
+      gradient.addColorStop(1, "rgba(16, 185, 129, 0.0)");
+
+      priceChart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: "Close Price",
+              data: closes,
+              borderColor: "#10b981",
+              borderWidth: 2,
+              backgroundColor: gradient,
+              fill: true,
+              tension: 0.1,
+              pointRadius: 0,
+              pointHoverRadius: 4
+            },
+            {
+              label: "EMA 20",
+              data: ema20,
+              borderColor: "rgba(56, 189, 248, 0.6)",
+              borderWidth: 1.5,
+              borderDash: [4, 4],
+              pointRadius: 0,
+              fill: false
+            },
+            {
+              label: "BB Upper",
+              data: bbUpper,
+              borderColor: "rgba(148, 163, 184, 0.3)",
+              borderWidth: 1,
+              pointRadius: 0,
+              fill: false
+            },
+            {
+              label: "BB Lower",
+              data: bbLower,
+              borderColor: "rgba(148, 163, 184, 0.3)",
+              borderWidth: 1,
+              pointRadius: 0,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { intersect: false, mode: 'index' },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: "#0f172a",
+              borderColor: "#334155",
+              borderWidth: 1,
+              titleFont: { family: "JetBrains Mono" },
+              bodyFont: { family: "JetBrains Mono" }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: "rgba(51, 65, 85, 0.2)" },
+              ticks: { color: "#64748b", font: { family: "JetBrains Mono", size: 10 }, maxTicksLimit: 8 }
+            },
+            y: {
+              grid: { color: "rgba(51, 65, 85, 0.2)" },
+              ticks: { color: "#64748b", font: { family: "JetBrains Mono", size: 10 } }
+            }
+          }
+        }
+      });
+
+      // Subchart (RSI)
+      if (subChart) subChart.destroy();
+      const subCtx = document.getElementById("subChartCanvas").getContext("2d");
+      subChart = new Chart(subCtx, {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [{
+            label: "RSI 14",
+            data: rsiVals,
+            borderColor: "#38bdf8",
+            borderWidth: 1.5,
+            pointRadius: 0,
+            fill: false
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: { legend: { display: false } },
+          scales: {
+            x: { display: false },
+            y: {
+              min: 0,
+              max: 100,
+              grid: { color: "rgba(51, 65, 85, 0.2)" },
+              ticks: { color: "#64748b", font: { size: 9 }, stepSize: 30 }
+            }
+          }
+        }
+      });
+      document.getElementById("subchart-val").textContent = latest.rsi ? latest.rsi.toFixed(1) : "50.0";
+    }
+
+    // 4. Load AI Prediction & SHAP
+    async function loadPrediction(ticker) {
+      const pred = await fetchJSON(`/predict/${encodeURIComponent(ticker)}`);
+      if (!pred) return;
+
+      const isBuy = pred.signal_code === "BUY";
+      const isSell = pred.signal_code === "SELL";
+      const isIndex = pred.instrument_type === "INDEX" || ticker.startsWith('^');
+      const isEquity = pred.is_equity || pred.instrument_type === "EQUITY";
+      
+      // Update Instrument Classification Badge
+      const instrBadge = document.getElementById("chart-instrument-badge");
+      if (instrBadge) {
+        if (isIndex) {
+          instrBadge.textContent = "📈 Benchmark Index (Exposure via Futures / ETFs e.g. NIFTYBEES)";
+          instrBadge.className = "text-[10px] font-mono px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/30";
+        } else if (isEquity) {
+          instrBadge.textContent = "🏢 Corporate Equity Shares (Direct Purchase)";
+          instrBadge.className = "text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30";
+        } else if (pred.instrument_type === "ETF") {
+          instrBadge.textContent = "📊 Exchange Traded Fund (Basket Units)";
+          instrBadge.className = "text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-400 border border-indigo-500/30";
+        } else if (pred.instrument_type === "COMMODITY") {
+          instrBadge.textContent = "🥇 Commodity Contract (Futures / ETFs)";
+          instrBadge.className = "text-[10px] font-mono px-2 py-0.5 rounded bg-amber-500/10 text-amber-400 border border-amber-500/30";
+        } else if (pred.instrument_type === "CRYPTO") {
+          instrBadge.textContent = "🪙 Digital Asset (Spot / Perpetuals)";
+          instrBadge.className = "text-[10px] font-mono px-2 py-0.5 rounded bg-purple-500/10 text-purple-400 border border-purple-500/30";
+        } else {
+          instrBadge.textContent = "💱 Foreign Exchange Pair";
+          instrBadge.className = "text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700";
+        }
+      }
+
+      // Update Signal Label and Execution Vehicle
+      const sigLabel = document.getElementById("signal-label");
+      sigLabel.textContent = pred.signal;
+      sigLabel.className = `text-3xl font-black tracking-tight uppercase ${
+        isBuy ? 'text-emerald-400' : isSell ? 'text-rose-400' : 'text-slate-300'
+      }`;
+
+      const vehicleBadge = document.getElementById("signal-vehicle-badge");
+      const disclaimerEl = document.getElementById("signal-instrument-disclaimer");
+      if (vehicleBadge) {
+        if (isIndex) {
+          vehicleBadge.textContent = isBuy ? "Action: Long Index Futures / Buy ETF (e.g. NIFTYBEES)" : (isSell ? "Action: Short Index Futures / Reduce ETF" : "Action: Hold Index Position");
+          vehicleBadge.className = `mt-1.5 inline-block text-[11px] font-mono px-2.5 py-0.5 rounded-full border ${
+            isBuy ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' : (isSell ? 'bg-rose-500/10 text-rose-300 border-rose-500/30' : 'bg-slate-800 text-slate-400 border-slate-700')
+          }`;
+          if (disclaimerEl) {
+            disclaimerEl.textContent = "💡 Note: Indices are benchmarks and cannot be purchased directly. Exposure executed via Index ETFs (e.g. NIFTYBEES/BANKBEES) or Index Futures.";
+            disclaimerEl.classList.remove("hidden");
+          }
+        } else {
+          vehicleBadge.textContent = isBuy ? `Action: Buy ${pred.name} Shares` : (isSell ? `Action: Sell ${pred.name} Shares` : `Action: Hold ${pred.name}`);
+          vehicleBadge.className = `mt-1.5 inline-block text-[11px] font-mono px-2.5 py-0.5 rounded-full border ${
+            isBuy ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' : (isSell ? 'bg-rose-500/10 text-rose-300 border-rose-500/30' : 'bg-slate-800 text-slate-400 border-slate-700')
+          }`;
+          if (disclaimerEl) {
+            disclaimerEl.textContent = `💡 Note: Direct corporate equity stock. You can buy/sell physical shares of ${pred.name} on the cash exchange.`;
+            disclaimerEl.classList.remove("hidden");
+          }
+        }
+      }
+
+      const probText = document.getElementById("signal-probability");
+      probText.textContent = `${(pred.confidence * 100).toFixed(1)}% Model Confidence Probability`;
+
+      const confPct = document.getElementById("confidence-pct");
+      confPct.textContent = `${(pred.confidence * 100).toFixed(1)}%`;
+      confPct.className = `font-bold ${isBuy ? 'text-emerald-400' : isSell ? 'text-rose-400' : 'text-slate-300'}`;
+
+      const confBar = document.getElementById("confidence-bar");
+      confBar.style.width = `${pred.confidence * 100}%`;
+      confBar.className = `h-full rounded-full transition-all duration-500 ${
+        isBuy ? 'bg-gradient-to-r from-emerald-500 to-teal-400' :
+        isSell ? 'bg-gradient-to-r from-rose-500 to-amber-500' :
+        'bg-slate-500'
+      }`;
+
+      // Populate SHAP Drivers
+      const shapContainer = document.getElementById("shap-drivers-list");
+      shapContainer.innerHTML = "";
+
+      pred.shap_drivers.forEach(d => {
+        const isBull = d.direction === "bullish";
+        const item = document.createElement("div");
+        item.className = "p-2.5 rounded-xl bg-slate-900/70 border border-slate-800 text-xs";
+        item.innerHTML = `
+          <div class="flex items-center justify-between mb-1">
+            <span class="font-mono font-bold text-slate-300">${d.feature_label}</span>
+            <span class="font-mono font-semibold px-2 py-0.5 rounded text-[10px] ${
+              isBull ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+            }">${isBull ? '+' : ''}${d.shap_impact.toFixed(3)} SHAP</span>
+          </div>
+          <p class="text-slate-400 text-[11px] leading-relaxed">${d.explanation}</p>
+        `;
+        shapContainer.appendChild(item);
+      });
+
+      // Populate News Catalysts
+      const newsContainer = document.getElementById("news-catalysts-container");
+      newsContainer.innerHTML = "";
+      
+      const headlines = pred.top_headlines || [];
+      if (headlines.length === 0) {
+        newsContainer.innerHTML = `<p class="text-xs text-slate-500 col-span-3">No recent breaking news logged for this asset.</p>`;
+      } else {
+        headlines.slice(0, 3).forEach(h => {
+          const isPos = h.sentiment_score > 0.15;
+          const isNeg = h.sentiment_score < -0.15;
+          const badgeClass = isPos ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' :
+                             isNeg ? 'bg-rose-500/10 text-rose-400 border-rose-500/20' :
+                             'bg-slate-800 text-slate-400 border-slate-700';
+
+          const card = document.createElement("div");
+          card.className = "p-3 rounded-xl bg-slate-900/70 border border-slate-800 flex flex-col justify-between";
+          card.innerHTML = `
+            <div>
+              <div class="flex items-center justify-between mb-1.5">
+                <span class="text-[10px] font-mono text-slate-500">${h.source || 'News Wire'}</span>
+                <span class="text-[9px] font-mono px-1.5 py-0.5 rounded border ${badgeClass}">
+                  ${h.sentiment_score >= 0 ? '+' : ''}${h.sentiment_score.toFixed(2)} ${h.finbert_label}
+                </span>
+              </div>
+              <p class="text-xs font-medium text-slate-200 leading-snug line-clamp-2">${h.headline}</p>
+            </div>
+            <div class="mt-2 text-[10px] font-mono text-slate-500 flex items-center space-x-1">
+              <i data-lucide="clock" class="w-3 h-3"></i>
+              <span>${h.hours_ago ? h.hours_ago + 'h ago' : 'Recent'}</span>
+            </div>
+          `;
+          newsContainer.appendChild(card);
+        });
+      }
+
+      renderIcons();
+    }
+
+    let accuracyChart = null;
+
+    function populateAssetDropdowns() {
+      const btSelect = document.getElementById("bt-asset-select");
+      const accSelect = document.getElementById("acc-asset-select");
+      if (!btSelect || !accSelect || assetList.length === 0) return;
+
+      const optsHtml = assetList.map(a => 
+        `<option value="${a.ticker}" ${a.ticker === currentTicker ? 'selected' : ''}>${a.name} (${a.ticker.replace('^', '').replace('.NS', '')})</option>`
+      ).join('');
+
+      btSelect.innerHTML = optsHtml;
+      accSelect.innerHTML = optsHtml;
+
+      btSelect.onchange = (e) => {
+        currentTicker = e.target.value;
+        selectAsset(currentTicker);
+      };
+      accSelect.onchange = (e) => {
+        currentTicker = e.target.value;
+        selectAsset(currentTicker);
+      };
+    }
+
+    // 5. Load Backtest Suite
+    async function loadBacktest(ticker) {
+      const data = await fetchJSON(`/backtest/${encodeURIComponent(ticker)}`);
+      if (!data || !data.metrics) return;
+
+      const m = data.metrics;
+      const currencyPrefix = (data.currency === "INR" || ticker.includes(".NS") || ticker.includes("^NSE") || ticker.includes("^BSE")) ? "₹" : "$";
+
+      // Update Header & Dropdown
+      const nameEl = document.getElementById("bt-asset-name");
+      if (nameEl) nameEl.textContent = data.name || ticker;
+      const tickerEl = document.getElementById("bt-asset-ticker");
+      if (tickerEl) tickerEl.textContent = data.ticker;
+      const classEl = document.getElementById("bt-asset-class");
+      if (classEl) classEl.textContent = data.category || "Asset";
+      const selectEl = document.getElementById("bt-asset-select");
+      if (selectEl) selectEl.value = ticker;
+
+      // Update Strategy Verdict Callout
+      const verdictEl = document.getElementById("bt-verdict-text");
+      if (verdictEl) {
+        verdictEl.textContent = data.verdict_summary || "Quantitative backtesting simulation completed across historical walk-forward test windows.";
+      }
+
+      const alphaPct = (m.strategy_total_return_pct - m.benchmark_total_return_pct).toFixed(1);
+      const isAlphaPos = parseFloat(alphaPct) >= 0;
+
+      const statsGrid = document.getElementById("backtest-stats-grid");
+      statsGrid.innerHTML = `
+        <div class="glass-card rounded-xl p-3 text-center">
+          <span class="text-[10px] font-mono text-slate-400 block" title="Net return of AI strategy post-fees">STRATEGY RETURN</span>
+          <span class="text-base font-black font-mono text-emerald-400">+${m.strategy_total_return_pct}%</span>
+          <span class="text-[9px] font-mono text-slate-500 block mt-0.5">Post-friction</span>
+        </div>
+        <div class="glass-card rounded-xl p-3 text-center">
+          <span class="text-[10px] font-mono text-slate-400 block" title="Passive Buy & Hold return">BENCHMARK</span>
+          <span class="text-base font-black font-mono text-slate-300">+${m.benchmark_total_return_pct}%</span>
+          <span class="text-[9px] font-mono text-slate-500 block mt-0.5">Buy & Hold</span>
+        </div>
+        <div class="glass-card rounded-xl p-3 text-center">
+          <span class="text-[10px] font-mono text-slate-400 block" title="Excess return over benchmark">STRATEGY ALPHA</span>
+          <span class="text-base font-black font-mono ${isAlphaPos ? 'text-emerald-400' : 'text-rose-400'}">${isAlphaPos ? '+' : ''}${alphaPct}%</span>
+          <span class="text-[9px] font-mono text-slate-500 block mt-0.5">Alpha Edge</span>
+        </div>
+        <div class="glass-card rounded-xl p-3 text-center">
+          <span class="text-[10px] font-mono text-slate-400 block" title="Risk-adjusted excess return vs 5% risk-free rate">SHARPE RATIO</span>
+          <span class="text-base font-black font-mono text-cyan-400">${m.annualized_sharpe}</span>
+          <span class="text-[9px] font-mono text-slate-500 block mt-0.5">>1.0 Good</span>
+        </div>
+        <div class="glass-card rounded-xl p-3 text-center">
+          <span class="text-[10px] font-mono text-slate-400 block" title="Return per unit of downside risk only">SORTINO RATIO</span>
+          <span class="text-base font-black font-mono text-cyan-300">${m.annualized_sortino}</span>
+          <span class="text-[9px] font-mono text-slate-500 block mt-0.5">Downside metric</span>
+        </div>
+        <div class="glass-card rounded-xl p-3 text-center">
+          <span class="text-[10px] font-mono text-slate-400 block" title="Deepest peak-to-trough drop">MAX DRAWDOWN</span>
+          <span class="text-base font-black font-mono text-rose-400">-${m.max_drawdown_pct}%</span>
+          <span class="text-[9px] font-mono text-slate-500 block mt-0.5">Risk control</span>
+        </div>
+        <div class="glass-card rounded-xl p-3 text-center">
+          <span class="text-[10px] font-mono text-slate-400 block" title="Percentage of profitable completed trades">WIN RATE</span>
+          <span class="text-base font-black font-mono text-emerald-300">${m.win_rate_pct}%</span>
+          <span class="text-[9px] font-mono text-slate-500 block mt-0.5">${m.total_trades} trades</span>
+        </div>
+        <div class="glass-card rounded-xl p-3 text-center">
+          <span class="text-[10px] font-mono text-slate-400 block" title="Gross profits divided by gross losses">PROFIT FACTOR</span>
+          <span class="text-base font-black font-mono text-amber-400">${m.profit_factor}</span>
+          <span class="text-[9px] font-mono text-slate-500 block mt-0.5">>1.5 Strong</span>
+        </div>
+      `;
+
+      document.getElementById("backtest-cost-badge").textContent = `Cost: ${m.cost_model_bps} bps applied`;
+
+      // Render Backtest Equity Curve
+      if (backtestChart) backtestChart.destroy();
+      const labels = data.equity_curves.map(e => e.date);
+      const stratVals = data.equity_curves.map(e => e.strategy);
+      const benchVals = data.equity_curves.map(e => e.benchmark);
+
+      const ctx = document.getElementById("backtestChartCanvas").getContext("2d");
+      backtestChart = new Chart(ctx, {
+        type: "line",
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: `AI Strategy (${data.name})`,
+              data: stratVals,
+              borderColor: "#10b981",
+              borderWidth: 2.2,
+              pointRadius: 0,
+              pointHoverRadius: 4,
+              fill: false
+            },
+            {
+              label: `Buy & Hold (${data.name})`,
+              data: benchVals,
+              borderColor: "#64748b",
+              borderWidth: 1.5,
+              borderDash: [3, 3],
+              pointRadius: 0,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { intersect: false, mode: 'index' },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: "#0f172a",
+              borderColor: "#334155",
+              borderWidth: 1,
+              titleFont: { family: "JetBrains Mono" },
+              bodyFont: { family: "JetBrains Mono" },
+              callbacks: {
+                label: (ctx) => `${ctx.dataset.label}: ${currencyPrefix}${ctx.parsed.y.toLocaleString()}`
+              }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: "rgba(51, 65, 85, 0.2)" },
+              ticks: { color: "#64748b", font: { family: "JetBrains Mono", size: 10 }, maxTicksLimit: 8 }
+            },
+            y: {
+              grid: { color: "rgba(51, 65, 85, 0.2)" },
+              ticks: {
+                color: "#64748b",
+                font: { family: "JetBrains Mono", size: 10 },
+                callback: v => currencyPrefix + (v / 1000).toFixed(0) + 'k'
+              }
+            }
+          }
+        }
+      });
+
+      // Populate Recent Trades Log
+      const tradesContainer = document.getElementById("backtest-trades-list");
+      tradesContainer.innerHTML = "";
+      (data.recent_trades || []).forEach(t => {
+        const item = document.createElement("div");
+        item.className = "p-2.5 rounded-xl bg-slate-900/70 border border-slate-800 text-xs font-mono flex items-center justify-between";
+        item.innerHTML = `
+          <div>
+            <div class="text-slate-200 font-bold flex items-center space-x-1.5">
+              <span>${data.name}</span>
+              <span class="text-[10px] text-slate-400 font-normal">(${t.action})</span>
+            </div>
+            <div class="text-[10px] text-slate-500">${t.entry_date} → ${t.exit_date}</div>
+          </div>
+          <div class="text-right">
+            <div class="font-bold ${t.was_profitable ? 'text-emerald-400' : 'text-rose-400'}">
+              ${t.pnl_pct >= 0 ? '+' : ''}${t.pnl_pct}%
+            </div>
+            <div class="text-[10px] text-slate-400">${currencyPrefix}${t.entry_price} → ${currencyPrefix}${t.exit_price}</div>
+          </div>
+        `;
+        tradesContainer.appendChild(item);
+      });
+    }
+
+    // 6. Load Accuracy & T+5 Log
+    async function loadAccuracy(ticker) {
+      const data = await fetchJSON(`/accuracy/${encodeURIComponent(ticker)}`);
+      if (!data || !data.summary) return;
+
+      const s = data.summary;
+      document.getElementById("acc-7d").textContent = `${s.rolling_7d_accuracy_pct}%`;
+      document.getElementById("acc-30d").textContent = `${s.rolling_30d_accuracy_pct}%`;
+      document.getElementById("acc-90d").textContent = `${s.rolling_90d_accuracy_pct}%`;
+      document.getElementById("drift-status").textContent = s.drift_status;
+      document.getElementById("total-audit-count").textContent = `${s.total_verified_predictions} Verified Forecasts (${data.name})`;
+
+      const accSelect = document.getElementById("acc-asset-select");
+      if (accSelect) accSelect.value = ticker;
+
+      // Render Rolling Accuracy Timeline Chart
+      if (accuracyChart) accuracyChart.destroy();
+      const tl = data.accuracy_timeline || [];
+      const accCtx = document.getElementById("accuracyChartCanvas").getContext("2d");
+      accuracyChart = new Chart(accCtx, {
+        type: "line",
+        data: {
+          labels: tl.map(p => p.date),
+          datasets: [
+            {
+              label: "7-Day Precision",
+              data: tl.map(p => p.accuracy_7d),
+              borderColor: "#10b981",
+              borderWidth: 2,
+              pointRadius: 2,
+              fill: false
+            },
+            {
+              label: "30-Day Production",
+              data: tl.map(p => p.accuracy_30d),
+              borderColor: "#38bdf8",
+              borderWidth: 1.5,
+              pointRadius: 0,
+              fill: false
+            }
+          ]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: {
+              display: true,
+              labels: { color: "#94a3b8", font: { family: "JetBrains Mono", size: 10 } }
+            }
+          },
+          scales: {
+            x: {
+              grid: { color: "rgba(51, 65, 85, 0.2)" },
+              ticks: { color: "#64748b", font: { family: "JetBrains Mono", size: 9 }, maxTicksLimit: 6 }
+            },
+            y: {
+              min: 40,
+              max: 100,
+              grid: { color: "rgba(51, 65, 85, 0.2)" },
+              ticks: { color: "#64748b", font: { family: "JetBrains Mono", size: 9 }, callback: v => v + '%' }
+            }
+          }
+        }
+      });
+
+      // Populate Table with Company Name & Currency
+      const tbody = document.getElementById("accuracy-audit-tbody");
+      tbody.innerHTML = "";
+
+      (data.outcomes || []).slice(0, 16).forEach(o => {
+        const tr = document.createElement("tr");
+        tr.className = "hover:bg-slate-800/40 transition";
+        const isUp = o.actual_direction === "UP";
+        const prefix = (o.currency === "INR" || (o.ticker && o.ticker.includes(".NS")) || (o.ticker && o.ticker.includes("^NSE"))) ? "₹" : "$";
+        const cleanTicker = (o.ticker || ticker).replace('^', '').replace('.NS', '');
+
+        tr.innerHTML = `
+          <td class="py-2.5">
+            <div class="font-bold text-white">${o.name || data.name}</div>
+            <div class="text-[10px] text-slate-500 font-mono">${cleanTicker} • ${o.category || data.category}</div>
+          </td>
+          <td class="py-2.5 text-slate-400">${o.prediction_date.split('T')[0]}</td>
+          <td class="py-2.5 font-bold ${o.predicted_signal === 'BUY' ? 'text-emerald-400' : 'text-rose-400'}">
+            <span>${o.predicted_signal}</span>
+            <span class="text-[10px] text-slate-400 font-normal">(${(o.predicted_confidence * 100).toFixed(0)}%)</span>
+          </td>
+          <td class="py-2.5 text-slate-200 font-mono">${prefix}${o.price_at_prediction.toLocaleString()}</td>
+          <td class="py-2.5 text-slate-400">${o.outcome_date.split('T')[0]}</td>
+          <td class="py-2.5 text-slate-200 font-bold font-mono">${prefix}${o.actual_price.toLocaleString()}</td>
+          <td class="py-2.5 font-bold font-mono ${isUp ? 'text-emerald-400' : 'text-rose-400'}">${isUp ? '+' : ''}${o.price_change_pct}%</td>
+          <td class="py-2.5 text-right">
+            <span class="px-2 py-0.5 rounded text-[10px] font-bold ${
+              o.was_correct ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+            }">${o.was_correct ? '✅ CORRECT' : '❌ MISSED'}</span>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    // 7. Load Portfolio & Cross-Asset Heatmap
+    async function loadPortfolio() {
+      const data = await fetchJSON("/portfolio");
+      if (!data) return;
+
+      const corrContainer = document.getElementById("correlation-pairs-grid");
+      corrContainer.innerHTML = "";
+
+      (data.correlation_matrix || []).forEach(p => {
+        const isPos = p.correlation > 0;
+        const barWidth = Math.abs(p.correlation) * 100;
+        const color = isPos ? 'bg-emerald-500' : 'bg-rose-500';
+
+        const item = document.createElement("div");
+        item.className = "p-3 rounded-xl bg-slate-900/70 border border-slate-800 text-xs font-mono";
+        item.innerHTML = `
+          <div class="flex items-center justify-between mb-1.5">
+            <span class="text-slate-300 font-bold">${p.asset_a} ↔ ${p.asset_b}</span>
+            <span class="font-bold ${isPos ? 'text-emerald-400' : 'text-rose-400'}">${isPos ? '+' : ''}${p.correlation.toFixed(2)}</span>
+          </div>
+          <div class="w-full h-1.5 bg-slate-800 rounded-full overflow-hidden">
+            <div class="h-full ${color}" style="width: ${barWidth}%"></div>
+          </div>
+        `;
+        corrContainer.appendChild(item);
+      });
+
+      const topPicksContainer = document.getElementById("top-picks-list");
+      topPicksContainer.innerHTML = "";
+
+      (data.top_picks || []).forEach(pick => {
+        const item = document.createElement("div");
+        item.className = "p-3.5 rounded-xl bg-slate-900/70 border border-slate-800 flex items-center justify-between cursor-pointer hover:border-emerald-500/50 transition";
+        item.onclick = () => {
+          switchTab("dashboard");
+          selectAsset(pick.ticker);
+        };
+        item.innerHTML = `
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="font-bold text-white">${pick.name}</span>
+              <span class="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">${pick.signal}</span>
+            </div>
+            <span class="text-xs font-mono text-slate-400">${pick.asset_class}</span>
+          </div>
+          <div class="text-right">
+            <div class="text-xs font-mono font-bold text-slate-200">${pick.current_price.toLocaleString()}</div>
+            <div class="text-[10px] font-mono text-emerald-400 font-semibold">${(pick.confidence * 100).toFixed(1)}% Conviction</div>
+          </div>
+        `;
+        topPicksContainer.appendChild(item);
+      });
+    }
+
+    // 8. WebSocket Live Tick Connection
+    function connectWebSocket(ticker) {
+      if (ws) {
+        ws.close();
+      }
+
+      const wsProtocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+      const wsHost = window.location.host;
+      const wsUrl = `${wsProtocol}//${wsHost}/ws/live/${encodeURIComponent(ticker)}`;
+
+      const statusIndicator = document.getElementById("ws-indicator");
+      const statusText = document.getElementById("ws-status-text");
+
+      try {
+        ws = new WebSocket(wsUrl);
+
+        ws.onopen = () => {
+          statusIndicator.className = "flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-slate-900 border border-emerald-500/30 text-xs font-mono";
+          statusText.textContent = "LIVE STREAM ACTIVE";
+        };
+
+        ws.onmessage = (event) => {
+          const tick = JSON.parse(event.data);
+          if (tick.type === "TICK" && tick.ticker === currentTicker) {
+            handleLiveTick(tick);
+          }
+        };
+
+        ws.onclose = () => {
+          statusIndicator.className = "flex items-center space-x-1.5 px-2.5 py-1 rounded-full bg-slate-900 border border-slate-700 text-xs font-mono";
+          statusText.textContent = "CONNECTING...";
+          setTimeout(() => { if (currentTicker === ticker) connectWebSocket(ticker); }, 4000);
+        };
+      } catch (e) {
+        console.warn("WebSocket init error:", e);
+      }
+    }
+
+    function handleLiveTick(tick) {
+      const priceEl = document.getElementById("chart-price");
+      const prevPrice = parseFloat(priceEl.textContent.replace(/[^0-9.-]+/g, '')) || tick.price;
+      const isUp = tick.price >= prevPrice;
+
+      const isINR = currentTicker.includes('^NSE') || currentTicker.includes('^BSE') || currentTicker.includes('.NS') || currentTicker.includes('USDINR');
+      const pricePrefix = isINR ? '₹' : '$';
+
+      priceEl.textContent = `${pricePrefix}${tick.price.toLocaleString()}`;
+      priceEl.className = `text-2xl font-black font-mono tracking-tight transition ${
+        isUp ? 'tick-flash-up text-emerald-400' : 'tick-flash-down text-rose-400'
+      }`;
+
+      if (tick.is_market_open !== undefined) {
+        currentMarketOpen = tick.is_market_open;
+        if (tick.session_status) currentStatusMsg = tick.session_status;
+        if (tick.timezone_id) currentAssetTimezone = tick.timezone_id;
+        if (tick.timezone_code) currentTimezoneCode = tick.timezone_code;
+        if (tick.exchange) currentExchange = tick.exchange;
+        updateLiveClocks();
+      }
+
+      playTickSound(isUp);
+
+      // Update Chart last point
+      if (priceChart && priceChart.data.datasets[0].data.length > 0) {
+        const lastIdx = priceChart.data.datasets[0].data.length - 1;
+        priceChart.data.datasets[0].data[lastIdx] = tick.price;
+        priceChart.update('none');
+      }
+    }
+
+    // 9. Tab Switching
+    function switchTab(tabId) {
+      activeTab = tabId;
+      document.querySelectorAll(".nav-tab").forEach(btn => {
+        if (btn.dataset.tab === tabId) {
+          btn.className = "nav-tab active px-4 py-1.5 rounded-lg text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition flex items-center space-x-2";
+        } else {
+          btn.className = "nav-tab px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-400 hover:text-slate-200 hover:bg-slate-800/60 transition flex items-center space-x-2";
+        }
+      });
+
+      document.querySelectorAll(".tab-view").forEach(v => v.classList.add("hidden"));
+      document.getElementById(`view-${tabId}`).classList.remove("hidden");
+
+      if (tabId === "portfolio") loadPortfolio();
+    }
+
+    document.querySelectorAll(".nav-tab").forEach(btn => {
+      btn.addEventListener("click", () => switchTab(btn.dataset.tab));
+    });
+
+    document.getElementById("refresh-btn").addEventListener("click", () => {
+      selectAsset(currentTicker);
+    });
+
+    document.getElementById("sound-btn").addEventListener("click", () => {
+      soundEnabled = !soundEnabled;
+      document.getElementById("sound-btn").innerHTML = soundEnabled
+        ? `<i data-lucide="volume-2" class="w-4 h-4"></i>`
+        : `<i data-lucide="volume-x" class="w-4 h-4 text-slate-500"></i>`;
+      renderIcons();
+    });
+
+    // Category Pills Event Listeners
+    document.querySelectorAll(".cat-pill").forEach(pill => {
+      pill.addEventListener("click", () => {
+        document.querySelectorAll(".cat-pill").forEach(p => {
+          p.className = "cat-pill px-3 py-1 rounded-lg text-xs font-medium bg-slate-900/80 text-slate-400 hover:text-slate-200 border border-slate-800 transition";
+        });
+        pill.className = "cat-pill active px-3 py-1 rounded-lg text-xs font-semibold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition";
+        selectedCategory = pill.dataset.category;
+        loadAssets();
+      });
+    });
+
+    // Search Input Listener
+    const searchInput = document.getElementById("asset-search-input");
+    if (searchInput) {
+      searchInput.addEventListener("input", (e) => {
+        searchKeyword = e.target.value.trim();
+        loadAssets();
+      });
+    }
+
+    // Initial Load & Clock Timer
+    window.addEventListener("DOMContentLoaded", async () => {
+      renderIcons();
+      updateLiveClocks();
+      setInterval(updateLiveClocks, 1000);
+      await selectAsset("^NSEI");
+    });
+  </script>
+</body>
+</html>
